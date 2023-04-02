@@ -1,0 +1,8 @@
+name: LyriaMoebel
+version: '${project.version}'
+main: org.silvius.lyriamoebel.LyriaMoebel
+api-version: 1.19
+commands:
+  moebel:
+    usage: /moebel
+    aliases: []
