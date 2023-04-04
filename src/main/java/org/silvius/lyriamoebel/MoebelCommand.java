@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 
 public class MoebelCommand implements CommandExecutor {
-    protected static ItemStack generateItem(String s){
+    protected static ItemStack generateItem(String s, Integer amount){
         final ItemStack item = new ItemStack(Material.STICK);
         final ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(s);
@@ -24,6 +24,7 @@ public class MoebelCommand implements CommandExecutor {
         lore.add(ChatColor.BLACK + "(CIT) "+s);
         meta.setLore(lore);
         item.setItemMeta(meta);
+        item.setAmount(amount);
         return item;
     }
     @Override
@@ -44,11 +45,11 @@ public class MoebelCommand implements CommandExecutor {
                 return true;
             }
             if(strings[0].equals("stuhl")){
-                final ItemStack stack = generateItem("Stuhl");
+                final ItemStack stack = generateItem("Stuhl", 1);
 
                 player.getInventory().addItem(stack);
             } else if (strings[0].equals("tisch")) {
-                final ItemStack stack = generateItem("Tisch");
+                final ItemStack stack = generateItem("Tisch",1 );
                 player.getInventory().addItem(stack);
             }
 
