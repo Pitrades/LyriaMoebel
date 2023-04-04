@@ -21,7 +21,7 @@ public final class LyriaMoebel extends JavaPlugin {
         getCommand("moebel").setExecutor(new MoebelCommand());
         final PluginManager pluginManager = Bukkit.getPluginManager();
         plugin = this;
-        pluginManager.registerEvents(new Listeners(), this);
+        pluginManager.registerEvents(new ListenersNew(), this);
 
     }
 
