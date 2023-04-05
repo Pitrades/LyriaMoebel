@@ -3,24 +3,29 @@ package org.silvius.lyriamoebel;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.TileState;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.type.Bed;
 import org.bukkit.block.data.type.Door;
+import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockFromToEvent;
-import org.bukkit.event.block.BlockPhysicsEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 
+import javax.swing.*;
 import java.util.*;
 
 public class ListenersNew implements Listener {
@@ -41,12 +46,27 @@ public class ListenersNew implements Listener {
         block.setType(Material.WHITE_BED);
         final BlockData blockData = block.getBlockData();
         if(!(blockData instanceof Directional)){return;}
+        ((Bed) blockData).setFacing(face);
+        block.setBlockData(blockData);
+        TileState meta = (TileState) block.getState();
+
+        final PersistentDataContainer data = meta.getPersistentDataContainer();
+        final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+        data.set(namespacedKey, PersistentDataType.STRING, "Stuhl");
+        meta.update();
+    }
+    private static void summonDoorAfterUpdate(Block block, BlockFace face){
+        block.setType(Material.OAK_DOOR);
+        final BlockData blockData = block.getBlockData();
+        if(!(blockData instanceof Directional)){return;}
         ((Directional) blockData).setFacing(face);
         block.setBlockData(blockData);
+
     }
 
 
-    private void summonMoebel(Player player, Material material, Block block){
+
+    private void summonMoebel(Player player, Material material, Block block, ItemStack item){
         //Block über dem angeklickten muss Luft sein, sonst return
 
         if(!cooldownPlace.contains(player.getUniqueId())){
@@ -56,10 +76,16 @@ public class ListenersNew implements Listener {
             addtoBlockPlaceList(block);
             block.setType(material);
 
-            player.getInventory().getItemInMainHand().setAmount(player.getInventory().getItemInMainHand().getAmount()-1);
+            item.setAmount(item.getAmount()-1);
             if(material==Material.PISTON_HEAD){
                 final BlockData blockData = block.getBlockData();
                 ((Directional) blockData).setFacing(BlockFace.UP);
+                block.setBlockData(blockData);
+
+            }
+            if(material==Material.OAK_DOOR){
+                final BlockData blockData = block.getBlockData();
+                ((Directional) blockData).setFacing(player.getFacing());
                 block.setBlockData(blockData);
 
             }
@@ -67,6 +93,12 @@ public class ListenersNew implements Listener {
                 final BlockData blockData = block.getBlockData();
                 ((Bed) blockData).setFacing(player.getFacing());
                 block.setBlockData(blockData);
+
+                TileState meta = (TileState) block.getState();
+                final PersistentDataContainer data = meta.getPersistentDataContainer();
+                final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+                data.set(namespacedKey, PersistentDataType.STRING, "Stuhl");
+                meta.update();
 
             }
         }}
@@ -91,24 +123,24 @@ public class ListenersNew implements Listener {
     private static boolean isValidBed(Location location, Bed blockdata1){
         Block adjacentBlock = location.add(1, 0, 0).getBlock();
         Bed blockdata2;
-        if(adjacentBlock.getType()==Material.WHITE_BED) {
+        if(adjacentBlock.getBlockData() instanceof Bed) {
             blockdata2 = (Bed) adjacentBlock.getBlockData();
             if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
         }
         adjacentBlock = location.add(-2, 0, 0).getBlock();
-        if(adjacentBlock.getType()==Material.WHITE_BED) {
+        if(adjacentBlock.getBlockData() instanceof Bed) {
             blockdata2 = (Bed) adjacentBlock.getBlockData();
 
             if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
         }
         adjacentBlock = location.add(1, 0, 1).getBlock();
-        if(adjacentBlock.getType()==Material.WHITE_BED) {
+            if(adjacentBlock.getBlockData() instanceof Bed) {
             blockdata2 = (Bed) adjacentBlock.getBlockData();
 
             if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
         }
         adjacentBlock = location.add(0, 0, -2).getBlock();
-        if(adjacentBlock.getType()==Material.WHITE_BED) {
+            if(adjacentBlock.getBlockData() instanceof Bed) {
             blockdata2 = (Bed) adjacentBlock.getBlockData();
 
             if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
@@ -123,6 +155,15 @@ public class ListenersNew implements Listener {
 
         if(location.add(0, -1, 0).getBlock().getType()==Material.PISTON) {return false;}
         if(((Directional) blockdata).getFacing()!=BlockFace.UP){return false;}
+        return true;
+    }
+    private static boolean isValidTuer(Block block){
+        final Location location = block.getLocation();
+        final BlockData blockdata = block.getBlockData();
+
+        if(location.add(0, -1, 0).getBlock().getType()==Material.OAK_DOOR) {return false;}
+        if(location.add(0, 2, 0).getBlock().getType()==Material.OAK_DOOR) {return false;}
+
         return true;
     }
     @EventHandler
@@ -140,15 +181,23 @@ public class ListenersNew implements Listener {
         if(meta.lore().toString().contains("(CIT) Stuhl")){
             //Spawne Stuhl
             event.getPlayer().swingMainHand();
-            summonMoebel(player, Material.WHITE_BED, block.getLocation().add(0, 1, 0).getBlock());
+            summonMoebel(player, Material.WHITE_BED, block.getLocation().add(0, 1, 0).getBlock(), event.getItem());
         }
 
         if(meta.lore().toString().contains("(CIT) Tisch")){
             //Spawne Tisch
             event.getPlayer().swingMainHand();
-            summonMoebel(player, Material.PISTON_HEAD, block.getLocation().add(0, 1, 0).getBlock());
+            summonMoebel(player, Material.PISTON_HEAD, block.getLocation().add(0, 1, 0).getBlock(), event.getItem());
 
         }
+        if(meta.lore().toString().contains("(CIT) Tür")){
+            if(!block.getLocation().add(0, 1, 0).getBlock().canPlace(Bukkit.createBlockData(Material.OAK_DOOR))){return;}
+            //Spawne Tisch
+            event.getPlayer().swingMainHand();
+            summonMoebel(player, Material.OAK_DOOR, block.getLocation().add(0, 1, 0).getBlock(), event.getItem());
+
+        }
+
     }
     @EventHandler
     public static void onPlayerBedEnter(PlayerInteractEvent event){
@@ -164,11 +213,20 @@ public class ListenersNew implements Listener {
     public void onBlockPlace(BlockPlaceEvent event){
         final Block block = event.getBlock();
         addtoBlockPlaceList(block);
+        final Block blockBelow = block.getLocation().add(0, -1, 0).getBlock();
+        final BlockData blockData = blockBelow.getBlockData();
+        if(!(blockData instanceof Door)){return;}
+        if(!isValidTuer(blockBelow)){return;}
+        this.lastPlacedBlock.put(blockBelow.getLocation(), new String[]{blockBelow.getType().toString(), blockBelow.getBlockData().getAsString(true)});
+        blockBelow.setType(Material.AIR);
+
+        LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonDoorAfterUpdate(blockBelow, ( (Directional) blockData).getFacing()), 0L);
+
+
     }
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event){
-
         final Block block = event.getBlock();
         final Block blockAbove = block.getLocation().add(0, 1 ,0).getBlock();
         addToBlockBreakList(block);
@@ -181,36 +239,111 @@ public class ListenersNew implements Listener {
             if(!isValidPistonHead(blockAbove)){return;}
             dropMoebelItem(blockAbove.getLocation(), "Tisch",1 );
         }
+
+
         if(block.getBlockData() instanceof Bed){
-            if(!isValidBed(block.getLocation(), (Bed) block.getBlockData())){return;}
+            TileState meta = (TileState) block.getState();
+            final PersistentDataContainer data = meta.getPersistentDataContainer();
+            final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+            if(!data.has(namespacedKey)){return;}
             dropMoebelItem(event.getBlock().getLocation(), "Stuhl",1 );
         }
+
+        if(block.getType()==Material.OAK_DOOR){
+            if(!isValidTuer(block)){return;}
+            dropMoebelItem(block.getLocation(), "Tür",1 );
+            event.setCancelled(true);
+            block.setType(Material.AIR);
+        }
+
+        final Block blockBelow = block.getRelative(BlockFace.DOWN);
+        final BlockData blockData = blockBelow.getBlockData();
+
+        if(blockData instanceof Door){        if(isValidTuer(blockBelow)){
+            this.lastPlacedBlock.put(blockBelow.getLocation(), new String[]{blockBelow.getType().toString(), blockBelow.getBlockData().getAsString(true)});
+            blockBelow.setType(Material.AIR);
+
+            LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonDoorAfterUpdate(blockBelow, ( (Directional) blockData).getFacing()), 1L);
+        }}
+
+        final BlockData blockDataAbove = blockAbove.getBlockData();
+        if(blockDataAbove instanceof Door){        if(isValidTuer(blockAbove)){
+            this.lastBrokenBlock.put(blockAbove.getLocation(), new String[]{blockAbove.getType().toString(), blockAbove.getBlockData().getAsString(true)});
+            blockAbove.setType(Material.AIR);
+            dropMoebelItem(blockAbove.getLocation(), "Tür",1 );
+
+
+        }}
+
+
+
+    }
+
+    @EventHandler
+    public void onBlockDrop(BlockDropItemEvent event){
+
+
     }
 
 
     private void addToBlockBreakList(Block block){
         final Block blockAbove = block.getLocation().add(0, 1 ,0).getBlock();
-        BlockData blockData = block.getBlockData();
+        final BlockData blockData = block.getBlockData();
+        if(block.getType()== Material.AIR){return;}
+        if(blockData instanceof Bed){
+            TileState meta = (TileState) block.getState();
+            final PersistentDataContainer data = meta.getPersistentDataContainer();
+            final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+            if(!data.has(namespacedKey)){
+                this.lastBrokenBlock.put(block.getLocation(), new String[]{blockData.getMaterial().toString(), blockData.getAsString(true)});
+
+            Block bed_foot;
+            if(((Bed) blockData).getPart()== Bed.Part.FOOT){bed_foot = block.getRelative(((Bed) blockData).getFacing());}
+            else{bed_foot = block.getRelative(((Bed) blockData).getFacing().getOppositeFace());}
+
+                if(bed_foot.getBlockData() instanceof Bed){
+                Block block2 = bed_foot;
+                final List<Block> bedList = checkForBeds(block2);
+
+                if(bedList.size()>0){
+
+                    for(int i = 0; i<bedList.size(); i++){
+
+                        Block bedBlock = bedList.get(i);
+                        TileState meta2 = (TileState) bedBlock.getState();
+                        final PersistentDataContainer data2 = meta2.getPersistentDataContainer();
+                        final NamespacedKey namespacedKey2 = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+                        if(!data2.has(namespacedKey2)){continue;}
+                        if(((Bed) bedBlock.getBlockData()).getPart()==Bed.Part.HEAD){continue;}
+
+                        this.lastBrokenBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
+                        bedBlock.setType(Material.AIR);
+
+                        Block finalBlock2 = block2;
+                        LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonChairAfterUpdate(bedBlock, bedBlock.getFace(finalBlock2)), 1L);
+
+
+                }
+            }}}
+        }
         final List<Block> bedList = checkForBeds(block);
 
-        if(blockData instanceof Bed){
-            if(((Bed) blockData).getPart() == Bed.Part.HEAD){
-                this.lastBrokenBlock.put(block.getLocation(), new String[]{blockData.getMaterial().toString(), blockData.getAsString(true)});
-                return;
-            }
-        }
         if(bedList.size()>0){
 
             for(int i = 0; i<bedList.size(); i++){
 
                 Block bedBlock = bedList.get(i);
+                TileState meta = (TileState) bedBlock.getState();
+                final PersistentDataContainer data = meta.getPersistentDataContainer();
+                final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+                if(!data.has(namespacedKey)){continue;}
                 if(((Bed) bedBlock.getBlockData()).getPart()==Bed.Part.HEAD){continue;}
 
                 this.lastBrokenBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
-
                 bedBlock.setType(Material.AIR);
 
-                LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonChairAfterUpdate(bedBlock, bedBlock.getFace(block)), 1L);
+                Block finalBlock = block;
+                LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonChairAfterUpdate(bedBlock, bedBlock.getFace(finalBlock)), 1L);
 
             }
         }
@@ -256,11 +389,52 @@ public class ListenersNew implements Listener {
 
     private void addtoBlockPlaceList(Block block){
         final Block blockAbove = block.getLocation().add(0, 1 ,0).getBlock();
+        final BlockData blockData = block.getBlockData();
+
+        if(blockData instanceof Bed){
+            TileState meta = (TileState) block.getState();
+            final PersistentDataContainer data = meta.getPersistentDataContainer();
+            final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+            if(!data.has(namespacedKey)){
+                if(((Bed) blockData).getPart() == Bed.Part.HEAD){
+                    this.lastPlacedBlock.put(block.getLocation(), new String[]{blockData.getMaterial().toString(), blockData.getAsString(true)});
+
+                }
+                else{
+                    Block bed_foot = block.getRelative(((Bed) blockData).getFacing());
+
+                    if(bed_foot.getBlockData() instanceof Bed && ((Bed) bed_foot.getBlockData()).getPart()==Bed.Part.HEAD){
+                        Block block2 = bed_foot;
+                        final List<Block> bedList = checkForBeds(block2);
+
+                        if(bedList.size()>0){
+
+                            for(int i = 0; i<bedList.size(); i++){
+
+                                Block bedBlock = bedList.get(i);
+                                TileState meta2 = (TileState) bedBlock.getState();
+                                final PersistentDataContainer data2 = meta2.getPersistentDataContainer();
+                                final NamespacedKey namespacedKey2 = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+                                if(!data2.has(namespacedKey2)){continue;}
+                                if(((Bed) bedBlock.getBlockData()).getPart()==Bed.Part.HEAD){continue;}
+
+                                this.lastPlacedBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
+                                bedBlock.setType(Material.AIR);
+
+                                Block finalBlock2 = block2;
+                                LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonChairAfterUpdate(bedBlock, bedBlock.getFace(finalBlock2)), 1L);
+
+                            }
+                        }
+                    }}}
+        }
         final List<Block> bedList = checkForBeds(block);
+
         if(bedList.size()>0){
 
             for(int i = 0; i<bedList.size(); i++){
                 Block bedBlock = bedList.get(i);
+
                 if(((Bed) bedBlock.getBlockData()).getPart()==Bed.Part.HEAD){continue;}
                 this.lastPlacedBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
 
@@ -309,13 +483,19 @@ public class ListenersNew implements Listener {
     }
 
     private void addToBlockClickList(Block block){
+        if(block==null){return;}
+
         final Block blockAbove = block.getLocation().add(0, 1 ,0).getBlock();
         final List<Block> bedList = checkForBeds(block);
         if(bedList.size()>0){
 
             for(int i = 0; i<bedList.size(); i++){
                 Block bedBlock = bedList.get(i);
-                if(((Bed) bedBlock.getBlockData()).getPart()==Bed.Part.HEAD){continue;}
+                TileState meta = (TileState) bedBlock.getState();
+                final PersistentDataContainer data = meta.getPersistentDataContainer();
+                final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+                if(!data.has(namespacedKey)){continue;}
+
                 this.lastClickedBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
 
                 bedBlock.setType(Material.AIR);
@@ -334,6 +514,7 @@ public class ListenersNew implements Listener {
                 for(int i = 0; i<bedListBelow.size(); i++){
 
                     Block bedBlock = bedListBelow.get(i);
+
                     this.lastClickedBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
 
                     bedBlock.setType(Material.AIR);
@@ -341,21 +522,22 @@ public class ListenersNew implements Listener {
                     LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonChairAfterUpdate(bedBlock, bedBlock.getFace(blockBelow)), 1L);
 
                 }
-            }
+            }}
 
             final List<Block> bedListAbove = checkForBeds(blockAbove);
             if(bedListAbove.size()>0){
 
                 for(int i = 0; i<bedListAbove.size(); i++){
-
                     Block bedBlock = bedListAbove.get(i);
+                    if(((Bed) bedBlock.getBlockData()).getPart()==Bed.Part.HEAD){continue;}
+
                     this.lastClickedBlock.put(bedBlock.getLocation(), new String[]{bedBlock.getType().toString(), bedBlock.getBlockData().getAsString(true)});
 
                     bedBlock.setType(Material.AIR);
 
                     LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->   summonChairAfterUpdate(bedBlock, bedBlock.getFace(blockAbove)), 1L);
 
-                }
+
             }
 
 
@@ -394,36 +576,6 @@ public class ListenersNew implements Listener {
 
         }
         return blocklist;}
-    private static List<Block> checkForBedsInverted(Block block){
-        Bed blockdata;
-        final List<Block> blocklist= new ArrayList<>();
-        Block adjacentBlock = block.getLocation().add(1, 0, 0).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata = (Bed) adjacentBlock.getBlockData();
-            if(blockdata.getFacing()==BlockFace.EAST){
-                blocklist.add(adjacentBlock);}
-
-        }
-        adjacentBlock = block.getLocation().add(-1, 0, 0).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata = (Bed) adjacentBlock.getBlockData();
-            if(((Directional) blockdata).getFacing()==BlockFace.WEST){
-                blocklist.add(adjacentBlock);}
-        }
-        adjacentBlock = block.getLocation().add(0, 0, 1).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata = (Bed) adjacentBlock.getBlockData();
-            if(((Directional) blockdata).getFacing()==BlockFace.SOUTH){
-                blocklist.add(adjacentBlock);}
-        }
-        adjacentBlock = block.getLocation().add(0, 0, -1).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata = (Bed) adjacentBlock.getBlockData();
-            if(((Directional) blockdata).getFacing()==BlockFace.NORTH){
-                blocklist.add(adjacentBlock);}
-
-        }
-        return blocklist;}
 
     @EventHandler
     public void onBlockPhysicsUpdate(BlockPhysicsEvent event){
@@ -437,17 +589,15 @@ public class ListenersNew implements Listener {
             LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> lastBrokenBlock.remove(block.getLocation()), 3L);
 
             if(savedBlockData instanceof Bed){
-                System.out.println("AH");
                 final List<Block> bedList= checkForBeds(block);
                 if(bedList.size()>0){
                     for(int i=0; i<bedList.size(); i++){
-                        if(!isValidBedHelp((Bed) savedBlockData, (Bed) bedList.get(i).getBlockData())){return;}
-                        final Integer finalI = i;
-//                        bedList.get(i).setType(Material.AIR);
-//                        LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->  summonChairAfterUpdate(bedList.get(finalI), bedList.get(finalI).getFace(block)), 1L);
-
+                        Block bedBlock = bedList.get(i);
+                        TileState meta = (TileState) bedBlock.getState();
+                        final PersistentDataContainer data = meta.getPersistentDataContainer();
+                        final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
+                        if(!data.has(namespacedKey)){return;}
                     }}
-                if(((Bed) savedBlockData).getPart()==Bed.Part.HEAD){return;}
             }
 
             if(checkForBeds(block).size()>0){
@@ -484,18 +634,6 @@ public class ListenersNew implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event){
         final Block block = event.getClickedBlock();
         addToBlockClickList(block);
+
     }
-
-    private boolean isMultiBlock(BlockData savedBlockData, Location location) {
-        if(savedBlockData instanceof Bed && !isValidBed(location, (Bed) savedBlockData)){return true;}
-        if(savedBlockData instanceof Door){return true;}
-        final Block blockAbove = location.add(0, 1 ,0).getBlock();
-        if(blockAbove.getType().hasGravity()){
-            return true;
-        }
-        if(blockAbove.getBlockData() instanceof Ageable){return true;}
-        return false;
-    }
-
-
 }

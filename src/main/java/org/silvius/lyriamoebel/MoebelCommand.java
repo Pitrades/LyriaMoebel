@@ -20,9 +20,11 @@ public class MoebelCommand implements CommandExecutor {
         final ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(s);
         final ArrayList<String> lore = new ArrayList<>();
-        lore.add(" ");
         lore.add(ChatColor.BLACK + "(CIT) "+s);
         meta.setLore(lore);
+
+
+
         item.setItemMeta(meta);
         item.setAmount(amount);
         return item;
@@ -50,6 +52,10 @@ public class MoebelCommand implements CommandExecutor {
                 player.getInventory().addItem(stack);
             } else if (strings[0].equals("tisch")) {
                 final ItemStack stack = generateItem("Tisch",1 );
+                player.getInventory().addItem(stack);
+            }
+            else if (strings[0].equals("tür")) {
+                final ItemStack stack = generateItem("Tür",1 );
                 player.getInventory().addItem(stack);
             }
 
