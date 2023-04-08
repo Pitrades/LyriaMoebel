@@ -1,16 +1,15 @@
 package org.silvius.lyriamoebel;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.TileState;
+import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.Bed;
 import org.bukkit.block.data.type.Door;
+import org.bukkit.block.data.type.PistonHead;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -23,27 +22,25 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class Listeners implements Listener {
-    private LyriaMoebel main;
+    private final LyriaMoebel main;
     private static final ArrayList<UUID> cooldownPlace = new ArrayList<>();
     private static final ArrayList<Location> cooldownDrop = new ArrayList<>();
     private static final ArrayList<Location> cooldownReplace = new ArrayList<>();
     private static final ArrayList<Location> newlyPlacedBed = new ArrayList<>();
-    private static final ArrayList<Location> placedBlock = new ArrayList<>();
 
     private static final ArrayList<Location> droppedBed = new ArrayList<>();
     private static final ArrayList<Location> droppedDoor = new ArrayList<>();
 
     private static final ArrayList<Location> usedBed = new ArrayList<>();
-    private static final ArrayList<Location> doorRedstoneUpdate = new ArrayList<>();
+
+    private static final ArrayList<Location> doorChanged = new ArrayList<>();
 
 
 
@@ -55,12 +52,6 @@ public class Listeners implements Listener {
     private static List<String> isOpenListDoor = null;
     private static List<String> powerLevelListDoor = null;
     private static List<String> hingeListDoor = null;
-
-
-
-
-
-
 
 
 
@@ -87,7 +78,7 @@ public class Listeners implements Listener {
         if(!(blockData instanceof Directional)){return;}
         ((Bed) blockData).setFacing(face);
         block.setBlockData(blockData);
-        TileState meta = (TileState) block.getState();
+        final TileState meta = (TileState) block.getState();
 
         final PersistentDataContainer data = meta.getPersistentDataContainer();
         final NamespacedKey namespacedKey = new NamespacedKey(LyriaMoebel.getPlugin(), "isMoebel");
@@ -95,35 +86,13 @@ public class Listeners implements Listener {
         meta.update();
     }
 
-    private static void summonDoorAfterUpdate(Block block, BlockFace face){
-        block.setType(Material.OAK_DOOR);
-        final BlockData blockData = block.getBlockData();
-
-            int blockPower = Integer.parseInt(powerLevelListDoor.get(locationListDoor.indexOf(block.getLocation().toString())));
-            boolean isOpen = Boolean.parseBoolean(isOpenListDoor.get(locationListDoor.indexOf(block.getLocation().toString())));
-        Door.Hinge hinge = Door.Hinge.valueOf(hingeListDoor.get(locationListDoor.indexOf(block.getLocation().toString())));
-
-        if(!(blockData instanceof Door)){return;}
-            ((Door) blockData).setFacing(face);
-            ((Door) blockData).setOpen(isOpen);
-            ((Door) blockData).setPowered(blockPower > 0);
-            ((Door) blockData).setHinge(hinge);
-
-        block.setBlockData(blockData);
-
-
-
-
-
-    }
-
 
 
     private Location getIntersec(Player player){
-        int maxDistance=100;
-        Location loc = player.getEyeLocation();
+        final int maxDistance=100;
+        final Location loc = player.getEyeLocation();
 
-        Vector v = loc.getDirection().normalize().multiply(0.1);
+        final Vector v = loc.getDirection().normalize().multiply(0.1);
 
         for(int i = 1 ; i <= maxDistance ; i++) {
             loc.add(v);
@@ -131,24 +100,6 @@ public class Listeners implements Listener {
                 return loc;
         }
         return null;
-    }
-    private void addChangedDoorToBlackList(Block block){
-        placedBlock.add(block.getLocation().add(1, 0, 0));
-        placedBlock.add(block.getLocation().add(-1, 0, 0));
-
-        placedBlock.add(block.getLocation().add(0, 0, 1));
-
-        placedBlock.add(block.getLocation().add(0, 0, -1));
-
-
-        LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> {
-            placedBlock.remove(block.getLocation().add(1, 0, 0));
-            placedBlock.remove(block.getLocation().add(-1, 0, 0));
-
-            placedBlock.remove(block.getLocation().add(0, 0, 1));
-
-            placedBlock.remove(block.getLocation().add(0, 0, -1));
-        }, 2L);
     }
     private void summonMoebel(Player player, Material material, Block block, ItemStack item){
         //Block über dem angeklickten muss Luft sein, sonst return
@@ -172,13 +123,13 @@ public class Listeners implements Listener {
 
                 final int blockPower = block.getBlockPower();
 
-                //Vector intersection = IntersectionUtils.getIntersection(player.getLocation(), block, BlockFace.UP, 0);
-                Location intersection = getIntersec(player);
+                final Location intersection = getIntersec(player);
+                assert intersection != null;
 
                 Door.Hinge hinge = Door.Hinge.RIGHT;
 
                     if(player.getFacing()==BlockFace.WEST){
-                    double dist = Math.abs(intersection.getZ()-block.getLocation().getZ());
+                        double dist = Math.abs(intersection.getZ()-block.getLocation().getZ());
                     if(dist>0.5){
                         hinge = Door.Hinge.LEFT;}
                     else{
@@ -231,10 +182,9 @@ public class Listeners implements Listener {
 
                 }, 1L);
                 ((Door) blockData).setHinge(hinge);
-
+                ((Door) blockData).setHalf(Bisected.Half.TOP);
                 ((Directional) blockData).setFacing(player.getFacing());
                 block.setBlockData(blockData);
-                addChangedDoorToBlackList(block);
 
 
 
@@ -259,11 +209,11 @@ public class Listeners implements Listener {
 
             }
         }}
-    private static void dropMoebelItem(Location location, String s, Integer amount){
+    private static void dropMoebelItem(Location location, String s){
         if(!cooldownDrop.contains(location)){
             cooldownDrop.add(location);
             LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> cooldownDrop.remove(location), 1L);
-            location.getWorld().dropItemNaturally(location, MoebelCommand.generateItem(s,amount));
+            location.getWorld().dropItemNaturally(location, MoebelCommand.generateItem(s, 1));
 
         }}
 
@@ -271,10 +221,7 @@ public class Listeners implements Listener {
         if(blockdata1.getPart()== Bed.Part.FOOT && blockdata2.getPart()== Bed.Part.HEAD && blockdata1.getFacing()== blockdata2.getFacing()){
             return false;
         }
-        if(blockdata2.getPart()== Bed.Part.FOOT && blockdata1.getPart()== Bed.Part.HEAD && blockdata1.getFacing()== blockdata2.getFacing()){
-            return false;
-        }
-        return true;
+        return blockdata2.getPart() != Bed.Part.FOOT || blockdata1.getPart() != Bed.Part.HEAD || blockdata1.getFacing() != blockdata2.getFacing();
     }
     private static boolean isValidBed(Location location, Bed blockdata1){
         Block adjacentBlock = location.add(1, 0, 0).getBlock();
@@ -299,7 +246,7 @@ public class Listeners implements Listener {
         if(adjacentBlock.getBlockData() instanceof Bed) {
             blockdata2 = (Bed) adjacentBlock.getBlockData();
 
-            if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
+            return isValidBedHelp(blockdata1, blockdata2);
         }
 
         return true;
@@ -310,17 +257,13 @@ public class Listeners implements Listener {
         final BlockData blockdata = block.getBlockData();
 
         if(location.add(0, -1, 0).getBlock().getType()==Material.PISTON) {return false;}
-        if(((Directional) blockdata).getFacing()!=BlockFace.UP){return false;}
-        return true;
+        return ((Directional) blockdata).getFacing() == BlockFace.UP;
     }
     private static boolean isValidTuer(Block block){
         final Location location = block.getLocation();
-        final BlockData blockdata = block.getBlockData();
 
         if(location.add(0, -1, 0).getBlock().getType()==Material.OAK_DOOR) {return false;}
-        if(location.add(0, 2, 0).getBlock().getType()==Material.OAK_DOOR) {return false;}
-
-        return true;
+        return location.add(0, 2, 0).getBlock().getType() != Material.OAK_DOOR;
     }
 
     @EventHandler
@@ -336,7 +279,7 @@ public class Listeners implements Listener {
             main.getLocationsConfig().set("Faces", faceListChair);
             main.saveLocationFile();
 
-            dropMoebelItem(event.getBlock().getLocation(), "Stuhl",1 );
+            dropMoebelItem(event.getBlock().getLocation(), "Stuhl");
         }
 
         if(locationListDoor.contains(block.getLocation().toString())){
@@ -355,22 +298,21 @@ public class Listeners implements Listener {
 
             main.saveLocationFile();
 
-            dropMoebelItem(event.getBlock().getLocation(), "Tür",1 );
+            dropMoebelItem(event.getBlock().getLocation(), "Tür");
         }
 
         if(block.getType()==Material.PISTON_HEAD){
             if(!isValidPistonHead(block)){return;}
-            dropMoebelItem(block.getLocation(), "Tisch",1 );
+            dropMoebelItem(block.getLocation(), "Tisch");
         }
         if(blockAbove.getType()==Material.PISTON_HEAD){
             if(!isValidPistonHead(blockAbove)){return;}
-            dropMoebelItem(blockAbove.getLocation(), "Tisch",1 );
+            dropMoebelItem(blockAbove.getLocation(), "Tisch");
         }
         if(block.getType()==Material.OAK_DOOR){
             if(!isValidTuer(block)){return;}
-            addChangedDoorToBlackList(block);
 
-            dropMoebelItem(block.getLocation(), "Tür",1 );
+            dropMoebelItem(block.getLocation(), "Tür");
             event.setCancelled(true);
             block.setType(Material.AIR);
 
@@ -394,7 +336,7 @@ public class Listeners implements Listener {
             main.getLocationsConfig().set("HingesTür", hingeListDoor);
             main.saveLocationFile();
 
-            dropMoebelItem(blockAbove.getLocation(), "Tür",1 );
+            dropMoebelItem(blockAbove.getLocation(), "Tür");
 
         }
     }
@@ -482,58 +424,75 @@ public class Listeners implements Listener {
     @EventHandler public static void onPlayerBedLeave(PlayerBedLeaveEvent event) {
         Block block = event.getBed();
         if(block.getType()==Material.WHITE_BED && ((Bed) block.getBlockData()).getPart()== Bed.Part.HEAD){
-            usedBed.add(block.getLocation());
-            return;}
+            usedBed.add(block.getLocation());}
     }
+
     @EventHandler
-    public void onDoorPowered(BlockPhysicsEvent event){
-        Block block = event.getBlock();
-
-        if(locationListDoor.contains(block.getLocation().toString())){
-
-
-            int oldPower = Integer.parseInt(powerLevelListDoor.get(locationListDoor.indexOf(block.getLocation().toString())));
-            int newPower = block.getBlockPower();
-            if(oldPower!=newPower){
-                LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> doorRedstoneUpdate.remove(block.getLocation()), 1L);
-
-                main.broadcast("A");
-                powerLevelListDoor.set(locationListDoor.indexOf(block.getLocation().toString()), String.valueOf(newPower));
-                Door blockData = (Door) block.getBlockData();
-                blockData.setPowered(newPower>0);
-               doorRedstoneUpdate.add(block.getLocation());
-
-                if(oldPower==0){isOpenListDoor.set(locationListDoor.indexOf(block.getLocation().toString()), "true");
-                    blockData.setOpen(true);}
-                if(newPower==0){isOpenListDoor.set(locationListDoor.indexOf(block.getLocation().toString()), "false");
-                    blockData.setOpen(false);}
-                main.getLocationsConfig().set("OpenTür", isOpenListDoor);
-                main.getLocationsConfig().set("PowersTür", powerLevelListDoor);
-                main.saveLocationFile();
-
-                //                block.setBlockData(blockData);
-
+    public void onPistonPush(BlockPistonExtendEvent event){
+        List<Block> blockList = event.getBlocks();
+        for (Block value : blockList) {
+            Location location = value.getLocation();
+            if (locationListDoor.contains(location.toString()) || locationListChair.contains(location.toString())) {
+                event.setCancelled(true);
             }
+            Block block = location.add(0, 1, 0).getBlock();
+            onPistonEvent(block);
         }
     }
     @EventHandler
-    public void onRedstone(BlockRedstoneEvent event){
-        Block block = event.getBlock();
-        addChangedDoorToBlackList(block);
+    public void onPistonRetract(BlockPistonRetractEvent event){
+        List<Block> blockList = event.getBlocks();
+        for (Block value : blockList) {
+            Location location = value.getLocation();
+            if (locationListDoor.contains(location.toString()) || locationListChair.contains(location.toString())) {
+                event.setCancelled(true);
+            }
+            Block block = location.add(0, 1, 0).getBlock();
 
-    }
+            onPistonEvent(block);
+    }}
+
+    public void onPistonEvent(Block block){
+
+
+            if (locationListDoor.contains(block.getLocation().toString())) {
+                faceListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
+                isOpenListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
+                powerLevelListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
+                hingeListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
+
+                locationListDoor.remove(block.getLocation().toString());
+
+                main.getLocationsConfig().set("OpenTür", isOpenListDoor);
+                main.getLocationsConfig().set("PowersTür", powerLevelListDoor);
+                main.getLocationsConfig().set("LocationsTür", locationListDoor);
+                main.getLocationsConfig().set("FacesTür", faceListDoor);
+                main.getLocationsConfig().set("HingesTür", hingeListDoor);
+
+                main.saveLocationFile();
+
+                dropMoebelItem(block.getLocation(), "Tür");
+            }
+
+            if(block.getBlockData() instanceof PistonHead && isValidPistonHead(block)){
+                dropMoebelItem(block.getLocation(), "Tisch");
+            }
+        }
 
 
     @EventHandler
     public void onItemSpawn(ItemSpawnEvent event){
         Item item = event.getEntity();
         if(!item.getName().equals("White Bed")){return;}
-        for(int i=0; i<droppedBed.size(); i++){
-            Location location = droppedBed.get(i);
-            if(Math.abs(event.getLocation().getX()-location.getX())-1<0.2){event.setCancelled(true);
-            return;}
-            if(Math.abs(event.getLocation().getZ()-location.getZ())-1<0.2){event.setCancelled(true);
-            return;}
+        for (Location location : droppedBed) {
+            if (Math.abs(event.getLocation().getX() - location.getX()) - 1 < 0.2) {
+                event.setCancelled(true);
+                return;
+            }
+            if (Math.abs(event.getLocation().getZ() - location.getZ()) - 1 < 0.2) {
+                event.setCancelled(true);
+                return;
+            }
         }
         droppedBed.add(event.getLocation());
         LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> droppedBed.remove(event.getLocation()), 1L);
@@ -547,12 +506,30 @@ public class Listeners implements Listener {
         LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> {
 
 
-        for(int i=0; i<droppedDoor.size(); i++){
-            Location location = droppedDoor.get(i);
-            if(Math.abs(Math.abs(event.getLocation().getY()-location.getY())-0.5)<0.5 && item.getName().equals("Oak Door")){
-                item.remove();
-                return;}
-        }}, 1L);
+            for (Location location : droppedDoor) {
+                if (Math.abs(Math.abs(event.getLocation().getY() - location.getY()) - 0.5) < 0.5 && item.getName().equals("Oak Door")) {
+                    item.remove();
+                    return;
+                }
+            }
+        }, 1L);
+
+        for (String locString : locationListDoor) {
+            String[] parts = locString.split("[{,}=]");
+            World world = Bukkit.getWorld(parts[4]);
+            double x = Double.parseDouble(parts[7]);
+            double y = Double.parseDouble(parts[9]);
+            double z = Double.parseDouble(parts[11]);
+            float pitch = Float.parseFloat(parts[13]);
+            float yaw = Float.parseFloat(parts[15]);
+            Location location = new Location(world, x, y, z, yaw, pitch);
+            LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> {
+
+                if (doorChanged.contains(location) && location.getBlock().getBoundingBox().expand(1).contains(event.getLocation().toVector())) {
+                    item.remove();
+                }
+            }, 1L);
+        }
 
     }
 
@@ -567,7 +544,7 @@ public class Listeners implements Listener {
             if(!cooldownReplace.contains(block.getLocation())){
 
                 cooldownReplace.add(block.getLocation());
-                LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> cooldownReplace.remove(block.getLocation()), 0L);
+                LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> cooldownReplace.remove(block.getLocation()), 1L);
 
                 block.setType(Material.AIR);
                 LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> summonChairAfterUpdate(block, BlockFace.valueOf(faceListChair.get(locationListChair.indexOf(block.getLocation().toString())))), 0L);
@@ -575,12 +552,19 @@ public class Listeners implements Listener {
 
 
         if(locationListDoor.contains(block.getLocation().toString())){
-            if(!block.canPlace(event.getChangedBlockData())){
+            doorChanged.add(block.getLocation());
+            LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () ->
+                    doorChanged.remove(block.getLocation()), 2L);
+            if(!(event.getChangedBlockData() instanceof Door)){return;}
+            final Door blockdata = ((Door) event.getChangedBlockData());
+            blockdata.setHalf(Bisected.Half.BOTTOM);
+            if(!block.canPlace(blockdata)){
+                main.broadcast("Hae");
                 block.setType(Material.AIR);
                 droppedDoor.add(block.getLocation());
                 LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> droppedDoor.remove(block.getLocation()), 1L);
 
-                dropMoebelItem(block.getLocation(), "Tür", 1);
+                dropMoebelItem(block.getLocation(), "Tür");
                 faceListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
                 isOpenListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
                 powerLevelListDoor.remove(locationListDoor.indexOf(block.getLocation().toString()));
@@ -596,27 +580,9 @@ public class Listeners implements Listener {
 
                 main.saveLocationFile();
                 event.setCancelled(true);
-                return;
             }
-            //if(doorRedstoneUpdate.contains(block.getLocation())){
-            //  event.setCancelled(true);
 
-            //  return;}
-            event.setCancelled(true);
-
-
-            if(!cooldownReplace.contains(block.getLocation())){
-            cooldownReplace.add(block.getLocation());
-
-                    if (!placedBlock.contains(block.getLocation())) {
-                        block.setType(Material.AIR);
-                    }
-                    LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> summonDoorAfterUpdate(block, BlockFace.valueOf(faceListDoor.get(locationListDoor.indexOf(block.getLocation().toString())))), 0L);
-
-                    LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> cooldownReplace.remove(block.getLocation()), 1L);
-
-            }
-        return;}
+        }
 
         if(newlyPlacedBed.contains(block.getLocation())){
             LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> newlyPlacedBed.remove(block.getLocation()), 1L);
@@ -628,7 +594,7 @@ public class Listeners implements Listener {
             LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> usedBed.remove(block.getLocation()), 1L);
 
             event.setCancelled(true);
-            return;}
-
+            }
+//
     }
 }

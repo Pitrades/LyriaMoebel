@@ -9,6 +9,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.logging.Filter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -25,7 +26,7 @@ public final class LyriaMoebel extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        getCommand("moebel").setExecutor(new MoebelCommand());
+        Objects.requireNonNull(getCommand("moebel")).setExecutor(new MoebelCommand());
         final PluginManager pluginManager = Bukkit.getPluginManager();
         plugin = this;
         //pluginManager.registerEvents(new ListenersNew(), this);
