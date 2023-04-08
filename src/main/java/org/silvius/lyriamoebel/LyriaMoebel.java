@@ -1,24 +1,20 @@
 package org.silvius.lyriamoebel;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
-import java.util.logging.Filter;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 public final class LyriaMoebel extends JavaPlugin {
     private static LyriaMoebel plugin;
-    private File locationFile = new File(getDataFolder(), "locations.yaml");
-    private FileConfiguration locationsConfig = YamlConfiguration.loadConfiguration(locationFile);
+    private final File locationFile = new File(getDataFolder(), "locations.yaml");
+    private final FileConfiguration locationsConfig = YamlConfiguration.loadConfiguration(locationFile);
 
     public static LyriaMoebel getPlugin() {
         return plugin;
@@ -51,7 +47,7 @@ public final class LyriaMoebel extends JavaPlugin {
         catch (IOException e){e.printStackTrace();}
     }
     public void broadcast(String s){
-        this.getServer().broadcastMessage(s);
+        this.getServer().broadcast(Component.text(s));
     }
 
 
