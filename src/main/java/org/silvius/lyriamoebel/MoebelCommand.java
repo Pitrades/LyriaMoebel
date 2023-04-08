@@ -1,32 +1,30 @@
 package org.silvius.lyriamoebel;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.Configuration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 
 public class MoebelCommand implements CommandExecutor {
-    protected static ItemStack generateItem(String s, Integer amount){
+    protected static ItemStack generateItem(String s){
         final ItemStack item = new ItemStack(Material.STICK);
         final ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(s);
-        final ArrayList<String> lore = new ArrayList<>();
-        lore.add(ChatColor.BLACK + "(CIT) "+s);
-        meta.setLore(lore);
+        meta.displayName(Component.text(s));
+        final ArrayList<Component> lore = new ArrayList<>();
+        lore.add(Component.text(ChatColor.BLACK + "(CIT) "+s));
+        meta.lore(lore);
 
 
 
         item.setItemMeta(meta);
-        item.setAmount(amount);
+        item.setAmount(1);
         return item;
     }
     @Override
@@ -34,6 +32,7 @@ public class MoebelCommand implements CommandExecutor {
         if (commandSender instanceof Player) {
             final Player player = ((Player) commandSender).getPlayer();
 
+            assert player != null;
             if(!player.hasPermission("lyriamoebel.moebel")){
                 commandSender.sendMessage(ChatColor.RED+"Keine Berechtigung");
                 return true;
@@ -46,17 +45,23 @@ public class MoebelCommand implements CommandExecutor {
                 commandSender.sendMessage(ChatColor.RED+"Zu viele Argumente");
                 return true;
             }
-            if(strings[0].equals("stuhl")){
-                final ItemStack stack = generateItem("Stuhl", 1);
+            switch (strings[0]) {
+                case "stuhl": {
+                    final ItemStack stack = generateItem("Stuhl");
 
-                player.getInventory().addItem(stack);
-            } else if (strings[0].equals("tisch")) {
-                final ItemStack stack = generateItem("Tisch",1 );
-                player.getInventory().addItem(stack);
-            }
-            else if (strings[0].equals("tür")) {
-                final ItemStack stack = generateItem("Tür",1 );
-                player.getInventory().addItem(stack);
+                    player.getInventory().addItem(stack);
+                    break;
+                }
+                case "tisch": {
+                    final ItemStack stack = generateItem("Tisch");
+                    player.getInventory().addItem(stack);
+                    break;
+                }
+                case "tür": {
+                    final ItemStack stack = generateItem("Tür");
+                    player.getInventory().addItem(stack);
+                    break;
+                }
             }
 
 

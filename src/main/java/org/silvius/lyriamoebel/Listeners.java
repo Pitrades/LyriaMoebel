@@ -213,7 +213,7 @@ public class Listeners implements Listener {
         if(!cooldownDrop.contains(location)){
             cooldownDrop.add(location);
             LyriaMoebel.getPlugin().getServer().getScheduler().scheduleSyncDelayedTask(LyriaMoebel.getPlugin(), () -> cooldownDrop.remove(location), 1L);
-            location.getWorld().dropItemNaturally(location, MoebelCommand.generateItem(s, 1));
+            location.getWorld().dropItemNaturally(location, MoebelCommand.generateItem(s));
 
         }}
 
