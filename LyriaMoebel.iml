@@ -49,5 +49,23 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.ow2.asm:asm-commons:9.2" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.ow2.asm:asm-tree:9.2" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.ow2.asm:asm-analysis:9.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.github.angeschossen:LandsAPI:6.28.11" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.sk89q.worldguard:worldguard-bukkit:7.0.8-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.sk89q.worldguard:worldguard-core:7.0.8-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.sk89q.worldguard.worldguard-libs:core:7.0.8-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.sk89q.worldedit:worldedit-core:7.2.7" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.sk89q.worldedit.worldedit-libs:core:7.2.7" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.antlr:antlr4:4.9.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.antlr:antlr-runtime:3.5.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.antlr:ST4:4.3" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.abego.treelayout:org.abego.treelayout.core:1.0.3" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.glassfish:javax.json:1.0.4" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.ibm.icu:icu4j:61.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.mozilla:rhino-runtime:1.7.13" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.antlr:antlr4-runtime:4.9.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.flywaydb:flyway-core:3.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: com.sk89q.worldedit:worldedit-bukkit:7.2.7" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.spigotmc:spigot-api:1.17.1-R0.1-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-lang:commons-lang:2.6" level="project" />
   </component>
 </module>

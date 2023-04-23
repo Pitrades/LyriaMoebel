@@ -1,5 +1,15 @@
 package org.silvius.lyriamoebel;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.LocalPlayer;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.sk89q.worldguard.protection.ApplicableRegionSet;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
+import me.angeschossen.lands.api.LandsIntegration;
+import me.angeschossen.lands.api.flags.type.Flags;
+import me.angeschossen.lands.api.land.LandWorld;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -26,6 +36,7 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class Listeners implements Listener {
@@ -41,6 +52,7 @@ public class Listeners implements Listener {
     private static final ArrayList<Location> usedBed = new ArrayList<>();
 
     private static final ArrayList<Location> doorChanged = new ArrayList<>();
+    final LandsIntegration api = LandsIntegration.of(LyriaMoebel.getPlugin());
 
 
 
@@ -266,13 +278,63 @@ public class Listeners implements Listener {
         return location.add(0, 2, 0).getBlock().getType() != Material.OAK_DOOR;
     }
 
+    private boolean hasBreakPermission(Player player, Block block){
+        final LandWorld world = api.getWorld(player.getWorld());
+        final Location location= block.getLocation();
+        final Material material = block.getType();
+        if(world==null){return false;}
+
+        final LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
+        final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        final RegionManager manager = container.get(BukkitAdapter.adapt(location.getWorld()));
+        assert manager != null;
+        final ApplicableRegionSet set = manager.getApplicableRegions(BukkitAdapter.asBlockVector(location));
+
+        return (world.hasRoleFlag(player, location, Flags.BLOCK_BREAK,  material,false) && set.testState(localPlayer,com.sk89q.worldguard.protection.flags.Flags.BUILD));
+    }
+
+    private boolean hasPlacePermission(Player player, Block block){
+        final LandWorld world = api.getWorld(player.getWorld());
+        final Location location= block.getLocation();
+        final Material material = block.getType();
+        if(world==null){return false;}
+
+        final LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
+        final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        final RegionManager manager = container.get(BukkitAdapter.adapt(location.getWorld()));
+        assert manager != null;
+        final ApplicableRegionSet set = manager.getApplicableRegions(BukkitAdapter.asBlockVector(location));
+
+        return (world.hasRoleFlag(player, location, Flags.BLOCK_PLACE,  material,false) && set.testState(localPlayer,com.sk89q.worldguard.protection.flags.Flags.BUILD));
+    }
+
+    private boolean hasInteractPermission(Player player, Block block){
+        LandWorld world = api.getWorld(player.getWorld());
+        final Location location= block.getLocation();
+        final Material material = block.getType();
+        if(world==null){return false;}
+
+        LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager manager = container.get(BukkitAdapter.adapt(location.getWorld()));
+        assert manager != null;
+        ApplicableRegionSet set = manager.getApplicableRegions(BukkitAdapter.asBlockVector(location));
+
+
+        return (world.hasRoleFlag(player, location, Flags.INTERACT_DOOR,  material,false) && !set.testState(localPlayer,com.sk89q.worldguard.protection.flags.Flags.INTERACT));
+    }
+
+
+
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event){
         final Block block = event.getBlock();
-
+        final Player player = event.getPlayer();
         final Block blockAbove = block.getLocation().add(0, 1 ,0).getBlock();
+        if(!hasBreakPermission(player, block)){
+            return;}
 
-        if(locationListChair.contains(block.getLocation().toString())){
+            if(locationListChair.contains(block.getLocation().toString())){
             faceListChair.remove(locationListChair.indexOf(block.getLocation().toString()));
             locationListChair.remove(block.getLocation().toString());
             main.getLocationsConfig().set("Locations", locationListChair);
@@ -369,9 +431,10 @@ public class Listeners implements Listener {
         final Player player = event.getPlayer();
         final ItemStack item = event.getItem();
         final Block block = event.getClickedBlock();
+
         if(!event.getAction().isRightClick()){return;}
         if(block==null){return;}
-        if(locationListDoor.contains(block.getLocation().toString())){
+        if(locationListDoor.contains(block.getLocation().toString()) && hasInteractPermission(player, block)){
             if(player.isSneaking()){return;}
             if(!cooldownPlace.contains(player.getUniqueId())){
             isOpenListDoor.set(locationListDoor.indexOf(block.getLocation().toString()), String.valueOf(!Boolean.parseBoolean(isOpenListDoor.get(locationListDoor.indexOf(block.getLocation().toString())))));
@@ -385,19 +448,22 @@ public class Listeners implements Listener {
         if(event.getBlockFace()!=BlockFace.UP){return;}
         final ItemMeta meta = item.getItemMeta();
         if(!meta.hasLore()){return;}
-        if(meta.lore().toString().contains("(CIT) Stuhl")){
+        if(!hasPlacePermission(player, block.getRelative(BlockFace.UP))){
+            player.sendMessage(ChatColor.RED+"Du darfst das hier nicht tun!");
+            return;}
+        if(Objects.requireNonNull(meta.lore()).toString().contains("(CIT) Stuhl")){
             //Spawne Stuhl
             event.getPlayer().swingMainHand();
             summonMoebel(player, Material.WHITE_BED, block.getLocation().add(0, 1, 0).getBlock(), event.getItem());
         }
 
-        if(meta.lore().toString().contains("(CIT) Tisch")){
+        if(Objects.requireNonNull(meta.lore()).toString().contains("(CIT) Tisch")){
             //Spawne Tisch
             event.getPlayer().swingMainHand();
             summonMoebel(player, Material.PISTON_HEAD, block.getLocation().add(0, 1, 0).getBlock(), event.getItem());
 
         }
-        if(meta.lore().toString().contains("(CIT) Tür")){
+        if(Objects.requireNonNull(meta.lore()).toString().contains("(CIT) Tür")){
             if(!block.getLocation().add(0, 1, 0).getBlock().canPlace(Bukkit.createBlockData(Material.OAK_DOOR))){return;}
             //Spawne Tisch
             event.getPlayer().swingMainHand();
