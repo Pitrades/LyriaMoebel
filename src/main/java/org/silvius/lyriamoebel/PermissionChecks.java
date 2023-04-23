@@ -16,7 +16,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 public class PermissionChecks {
-    final LandsIntegration api = LandsIntegration.of(LyriaMoebel.getPlugin());
+    final static LandsIntegration api = LandsIntegration.of(LyriaMoebel.getPlugin());
 
     protected static boolean hasBreakPermission(Player player, Block block) {
         final LandWorld world = api.getWorld(player.getWorld());
