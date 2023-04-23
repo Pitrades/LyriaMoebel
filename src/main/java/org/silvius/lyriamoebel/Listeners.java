@@ -1,15 +1,6 @@
 package org.silvius.lyriamoebel;
 
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldguard.LocalPlayer;
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
-import com.sk89q.worldguard.protection.managers.RegionManager;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
-import me.angeschossen.lands.api.LandsIntegration;
-import me.angeschossen.lands.api.flags.type.Flags;
-import me.angeschossen.lands.api.land.LandWorld;
+
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -52,7 +43,6 @@ public class Listeners implements Listener {
     private static final ArrayList<Location> usedBed = new ArrayList<>();
 
     private static final ArrayList<Location> doorChanged = new ArrayList<>();
-    final LandsIntegration api = LandsIntegration.of(LyriaMoebel.getPlugin());
 
 
 
@@ -229,109 +219,13 @@ public class Listeners implements Listener {
 
         }}
 
-    private static boolean isValidBedHelp(Bed blockdata1, Bed blockdata2){
-        if(blockdata1.getPart()== Bed.Part.FOOT && blockdata2.getPart()== Bed.Part.HEAD && blockdata1.getFacing()== blockdata2.getFacing()){
-            return false;
-        }
-        return blockdata2.getPart() != Bed.Part.FOOT || blockdata1.getPart() != Bed.Part.HEAD || blockdata1.getFacing() != blockdata2.getFacing();
-    }
-    private static boolean isValidBed(Location location, Bed blockdata1){
-        Block adjacentBlock = location.add(1, 0, 0).getBlock();
-        Bed blockdata2;
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata2 = (Bed) adjacentBlock.getBlockData();
-            if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
-        }
-        adjacentBlock = location.add(-2, 0, 0).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata2 = (Bed) adjacentBlock.getBlockData();
-
-            if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
-        }
-        adjacentBlock = location.add(1, 0, 1).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata2 = (Bed) adjacentBlock.getBlockData();
-
-            if(!isValidBedHelp(blockdata1, blockdata2)){return false;}
-        }
-        adjacentBlock = location.add(0, 0, -2).getBlock();
-        if(adjacentBlock.getBlockData() instanceof Bed) {
-            blockdata2 = (Bed) adjacentBlock.getBlockData();
-
-            return isValidBedHelp(blockdata1, blockdata2);
-        }
-
-        return true;
-    }
-
-    private static boolean isValidPistonHead(Block block){
-        final Location location = block.getLocation();
-        final BlockData blockdata = block.getBlockData();
-
-        if(location.add(0, -1, 0).getBlock().getType()==Material.PISTON) {return false;}
-        return ((Directional) blockdata).getFacing() == BlockFace.UP;
-    }
-    private static boolean isValidTuer(Block block){
-        final Location location = block.getLocation();
-
-        if(location.add(0, -1, 0).getBlock().getType()==Material.OAK_DOOR) {return false;}
-        return location.add(0, 2, 0).getBlock().getType() != Material.OAK_DOOR;
-    }
-
-    private boolean hasBreakPermission(Player player, Block block){
-        final LandWorld world = api.getWorld(player.getWorld());
-        final Location location= block.getLocation();
-        final Material material = block.getType();
-        if(world==null){return false;}
-
-        final LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
-        final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        final RegionManager manager = container.get(BukkitAdapter.adapt(location.getWorld()));
-        assert manager != null;
-        final ApplicableRegionSet set = manager.getApplicableRegions(BukkitAdapter.asBlockVector(location));
-
-        return (world.hasRoleFlag(player, location, Flags.BLOCK_BREAK,  material,false) && set.testState(localPlayer,com.sk89q.worldguard.protection.flags.Flags.BUILD));
-    }
-
-    private boolean hasPlacePermission(Player player, Block block){
-        final LandWorld world = api.getWorld(player.getWorld());
-        final Location location= block.getLocation();
-        final Material material = block.getType();
-        if(world==null){return false;}
-
-        final LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
-        final RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        final RegionManager manager = container.get(BukkitAdapter.adapt(location.getWorld()));
-        assert manager != null;
-        final ApplicableRegionSet set = manager.getApplicableRegions(BukkitAdapter.asBlockVector(location));
-
-        return (world.hasRoleFlag(player, location, Flags.BLOCK_PLACE,  material,false) && set.testState(localPlayer,com.sk89q.worldguard.protection.flags.Flags.BUILD));
-    }
-
-    private boolean hasInteractPermission(Player player, Block block){
-        LandWorld world = api.getWorld(player.getWorld());
-        final Location location= block.getLocation();
-        final Material material = block.getType();
-        if(world==null){return false;}
-
-        LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
-        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        RegionManager manager = container.get(BukkitAdapter.adapt(location.getWorld()));
-        assert manager != null;
-        ApplicableRegionSet set = manager.getApplicableRegions(BukkitAdapter.asBlockVector(location));
-
-
-        return (world.hasRoleFlag(player, location, Flags.INTERACT_DOOR,  material,false) && !set.testState(localPlayer,com.sk89q.worldguard.protection.flags.Flags.INTERACT));
-    }
-
-
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event){
         final Block block = event.getBlock();
         final Player player = event.getPlayer();
         final Block blockAbove = block.getLocation().add(0, 1 ,0).getBlock();
-        if(!hasBreakPermission(player, block)){
+        if(!PermissionChecks.hasBreakPermission(player, block)){
             return;}
 
             if(locationListChair.contains(block.getLocation().toString())){
@@ -364,15 +258,15 @@ public class Listeners implements Listener {
         }
 
         if(block.getType()==Material.PISTON_HEAD){
-            if(!isValidPistonHead(block)){return;}
+            if(!BlockChecks.isValidPistonHead(block)){return;}
             dropMoebelItem(block.getLocation(), "Tisch");
         }
         if(blockAbove.getType()==Material.PISTON_HEAD){
-            if(!isValidPistonHead(blockAbove)){return;}
+            if(!BlockChecks.isValidPistonHead(blockAbove)){return;}
             dropMoebelItem(blockAbove.getLocation(), "Tisch");
         }
         if(block.getType()==Material.OAK_DOOR){
-            if(!isValidTuer(block)){return;}
+            if(!BlockChecks.isValidTuer(block)){return;}
 
             dropMoebelItem(block.getLocation(), "Tür");
             event.setCancelled(true);
@@ -434,7 +328,7 @@ public class Listeners implements Listener {
 
         if(!event.getAction().isRightClick()){return;}
         if(block==null){return;}
-        if(locationListDoor.contains(block.getLocation().toString()) && hasInteractPermission(player, block)){
+        if(locationListDoor.contains(block.getLocation().toString()) && PermissionChecks.hasInteractPermission(player, block)){
             if(player.isSneaking()){return;}
             if(!cooldownPlace.contains(player.getUniqueId())){
             isOpenListDoor.set(locationListDoor.indexOf(block.getLocation().toString()), String.valueOf(!Boolean.parseBoolean(isOpenListDoor.get(locationListDoor.indexOf(block.getLocation().toString())))));
@@ -448,7 +342,7 @@ public class Listeners implements Listener {
         if(event.getBlockFace()!=BlockFace.UP){return;}
         final ItemMeta meta = item.getItemMeta();
         if(!meta.hasLore()){return;}
-        if(!hasPlacePermission(player, block.getRelative(BlockFace.UP))){
+        if(!PermissionChecks.hasPlacePermission(player, block.getRelative(BlockFace.UP))){
             player.sendMessage(ChatColor.RED+"Du darfst das hier nicht tun!");
             return;}
         if(Objects.requireNonNull(meta.lore()).toString().contains("(CIT) Stuhl")){
@@ -476,14 +370,13 @@ public class Listeners implements Listener {
     }
     @EventHandler
     public static void onPlayerBedEnter(PlayerInteractEvent event){
-
         final Block block = event.getClickedBlock();
         if(block==null){return;}
         if(event.getAction().isLeftClick()){return;}
-        if(block.getType()==Material.WHITE_BED && ((Bed) block.getBlockData()).getPart()== Bed.Part.HEAD){
+        if(block.getType()==Material.WHITE_BED && ((Bed) block.getBlockData()).getPart()== Bed.Part.HEAD && !event.getPlayer().getWorld().isDayTime()){
             usedBed.add(block.getLocation());
             return;}
-        if(block.getType()==Material.WHITE_BED && isValidBed(block.getLocation(), (Bed) block.getBlockData()) && event.getAction().isRightClick()){
+        if(block.getType()==Material.WHITE_BED && BlockChecks.isValidBed(block.getLocation(), (Bed) block.getBlockData()) && event.getAction().isRightClick()){
             event.setCancelled(true);
         }
     }
@@ -540,7 +433,7 @@ public class Listeners implements Listener {
                 dropMoebelItem(block.getLocation(), "Tür");
             }
 
-            if(block.getBlockData() instanceof PistonHead && isValidPistonHead(block)){
+            if(block.getBlockData() instanceof PistonHead && BlockChecks.isValidPistonHead(block)){
                 dropMoebelItem(block.getLocation(), "Tisch");
             }
         }
